@@ -62,15 +62,16 @@ import types
 SlimSAM_model.image_encoder.forward = types.MethodType(forward, SlimSAM_model.image_encoder)
 
 predictor = SamPredictor(SlimSAM_model)
-# AutomaticMaskGenerator 설정 (픽셀아트/일반 둘 다 대응하도록 소프트 파라미터)
+
+# SAM 설정: 세부 조각까지 최대한 유지하도록 파라미터 완화
 mask_generator = SamAutomaticMaskGenerator(
     model=SlimSAM_model,
-    points_per_side=32,
-    pred_iou_thresh=0.88,
-    stability_score_thresh=0.90,
-    crop_n_layers=1,
-    crop_n_points_downscale_factor=2,
-    min_mask_region_area=100,  # Requires open-cv to run post-processing
+    points_per_side=64,
+    pred_iou_thresh=0.6,
+    stability_score_thresh=0.6,
+    crop_n_layers=2,
+    crop_n_points_downscale_factor=1,
+    min_mask_region_area=5,
 )
 
 # ---------------- Helper ----------------
@@ -105,13 +106,13 @@ def convert_to_ppt():
 
     for m in masks:
         mask = m["segmentation"].astype(np.uint8) * 255
-        if cv2.countNonZero(mask) < 200:  # 너무 작은 조각 무시
+        if cv2.countNonZero(mask) < 5:
             continue
-        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         if not cnts:
             continue
         cnt = max(cnts, key=cv2.contourArea)
-        if cv2.contourArea(cnt) < 150:
+        if cv2.contourArea(cnt) < 5:
             continue
         pts = cnt.squeeze()
         if pts.ndim != 2 or len(pts) < 3:
@@ -128,7 +129,7 @@ def convert_to_ppt():
         shp.fill.solid(); shp.fill.fore_color.rgb = RGBColor(*mean_col)
 
         if outline_var.get():
-            shp.line.fill.solid(); shp.line.fill.fore_color.rgb = RGBColor(0,0,0); shp.line.width = Pt(0.35)
+            shp.line.fill.solid(); shp.line.fill.fore_color.rgb = RGBColor(0, 0, 0); shp.line.width = Pt(0.35)
         else:
             shp.line.fill.background()
 
