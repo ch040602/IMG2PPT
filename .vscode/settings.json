@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./SlimSAM-master",
+        "./SlimSAM-master/segment_anything"
+    ]
+}
